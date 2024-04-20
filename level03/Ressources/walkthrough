@@ -1,0 +1,14 @@
+<!-- vim: syntax=Markdown -->
+
+```js
+var v4 = "Q}|u`sfg~sf{}|a3";
+for (var j = 1; j <= 21; j++)
+{
+  var tab = [];
+  for (i = 0; i < v4.length; ++i)
+  {
+    tab.push(v4.charCodeAt(i) ^ j);
+  }
+  console.log(j, String.fromCharCode(...tab));
+}
+```
