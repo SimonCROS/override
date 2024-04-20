@@ -1,28 +1,87 @@
 <!-- vim: syntax=Markdown -->
 
-Voici le détail du shellcode utilisé :
-```shellcode
-\x90\x90\x90\x90 ┐ nop
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 │
-\x90\x90\x90\x90 ┘
-\xd0\xae\xe6\xf7 ╴ system function
-\x70\xeb\xe5\xf7 ╴ exit function
-\xec\x97\xf8\xf7 ╴ /bin/sh
+On commence à lancer le fichier executable `./level02`, qui nous demande un username/mdp.
+
+À la fin, on obtient um message :
+> {username} does not have access!
+
+Bon, on a commencé à faire mumuse avec l'input, et à écrire des trucs du genre `%s`, `%p`.\
+Et bingo, ça a un comportement anormal, avec un `%s` dans le nom d'utilisateur, et un mot de passe par exemple `password`, le message devient
+> password does not have access!
+
+On arrive donc à print un autre champ depuis le nom d'utilisateur.\
+Cela nous met dès le début sur la piste de la "_format string attack_".
+
+---
+
+Dans l'assembleur, on remarque des fonctions qu'on a pu préalablement casser dans les projets de l'école :
+- fopen
+- fread
+- fgets
+- printf
+
+**Petite précision, on passe à du x64 !**
+
+Mais on remarque vite qu'avec `fopen` et `fread`, on ira pas loin. Elles ne contiennent aucunes actions de l'utilisateur avant.\
+En revanche, `fread` stocke le flag dans un pointeur sur la stack.
+
+Niveau `fgets`, pas d'overflow possible, il récupère une taille inférieure ou égale à la capacité du pointeur de destination.
+
+Il ne reste plus que `printf`, dont le plus intéressant, le dernier, qui utilise une entrée utilisateur comme format.
+
+C'est maintenant sûr, on fera une "_format string attack_".
+
+Et vu que le flag se trouve dans la stack, c'est super !
+
+---
+
+On commence à bourrer le champ du nom d'utilisateur avec des `%s`, mais on segfault très vite, dès 4 répétitions.\
+Alors on passe à des `%p`, qui impriment le contenu de la stack sous forme de pointeur 64 bits.
+
+Et c'est d'ailleurs logique que les `%s` ne fonctionnent pas, car tout le contenu qu'on cherche est dans la stack, et pas pointé par une adresse sur la stack.
+
+En entrant un mot de passe composé uniquement de `A` (mais vous pouvez mettre une autre lettre si vous préférez), on remarque une répétition de `41` (la version numérique du `A` en ASCII), et ce à partir de la 7 ème occurence de `%p`.
+
+Cela montre qu'on trouve le contenu de notre password dans le _vararg_ de `printf`, et que celui du buffer utilisé par `fread` ne doit pas être loin.
+
+On a donc essayer de trouver à quelle adresse le flag était, en regardant le premier paramètre passé à `fread`.\
+On peut assez facilement trouver `0x7fffffffe540`.
+
+Avec `gdb`, on ne peut pas lancer le programme facilement. Le fichier n'étant pas accessible depuis notre utilisateur courant, on doit mettre un breakpoint avant `fopen`, et remplacer le fichier qui va être ouvert par un autre fichier (on a utilisé le flag du level02) :
+```gdb
+set {char[26]} 0x400bb2 = "/home/users/level02/.pass"
 ```
+
+En suite, on peut mettre un breakpoint avant le `printf` sur lequel on peut utiliser notre attaque pour visualiser l'état de la stack avant l'appel :
+```gdb
+(gdb) x/20gx $rsp
+0x7fffffffe4c0:	0x00007fffffffe6c8	0x00000001f7ff9a08
+0x7fffffffe4d0:	0x4141414141414141	0x4141414141414141
+0x7fffffffe4e0:	0x4141414141414141	0x4141414141414141
+0x7fffffffe4f0:	0x4141414141414141	0x4141414141414141
+0x7fffffffe500:	0x4141414141414141	0x4141414141414141
+0x7fffffffe510:	0x4141414141414141	0x4141414141414141
+0x7fffffffe520:	0x4141414141414141	0x4141414141414141
+0x7fffffffe530:	0x0000000100414141	0x0000000000000000
+0x7fffffffe540:	0x38614e674c427750	0x3735574b544d3870
+0x7fffffffe550:	0x43514156787a3753	0x714a385670436e78
+```
+`gx` permet d'afficher sous forme de _giant word_, d'une taille de 8 octets, la taille d'un pointeur et donc d'un `%p` en architecture 64 bits.
+
+On voit une partie différente des AAA et du null à partir de `0x7fffffffe540`.\
+C'est la même adresse que celle trouvée juste avant.
+
+On peut compter le nombre de _giant words_ entre le premier 4141.. et notre `0x7fffffffe540` (ou faire une soustraction entre les deux adresses mais il est 19h30 alors c'est plus pratique de faire 1, 2, ... et à deux, on a assez de doigts).
+
+En mettant le bon nombre de `%p`, on voit apparaître cette string :
+`0x756e5052343768480x45414a35617339510x377a7143574e67580x354a35686e475873`
+
+En retirant les 0x, et en inversant les octets, on obtient :
+```
+4868373452506E75
+51397361354A4145
+58674E5743717A37
+7358476E68354A35
+4D394B6650673348
+```
+Et ceci sous forme ASCII nous donne le flag ! Youpi :\)
