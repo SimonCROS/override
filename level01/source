@@ -1,0 +1,60 @@
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <strings.h>
+
+int verify_user_name (char *input)
+{
+    puts("verifying username....\n");
+    const char *username = "dat_wil";
+    for (int i = 7; i > 0; i--) {
+        if (input[i] != username[i]) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int verify_user_pass (char *input)
+{
+    const char *username = "admin";
+    for (int i = 5; i > 0; i--) {
+        if (input[i] != username[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int main(int argc, char const *argv[])
+{
+    // stack size 96 (+ aligned)
+    void *v1 = 0; // at 4 in stack
+    char v2[64]; // at 68 in stack
+    void *v3 = 0; // at 88 in stack
+    void *v4 = 0; // at 92 in stack
+    void *v5 = 0; // at 92 in stack
+
+    void *buffer;
+
+    bzero(v2, sizeof(v2));
+    puts("********* ADMIN LOGIN PROMPT *********");
+    printf("Enter Username: ");
+    fgets(buffer, 256, stdin);
+    if (verify_user_name(buffer) != 0)
+    {
+        puts("nope, incorrect username...\n");
+        return 1;
+    }
+
+    puts("Enter Password: ");
+    fgets(v2, 100, stdin);
+
+    int ret = verify_user_pass(v2);
+    if (ret == 0 || ret != 0)
+    {
+        puts("nope, incorrect password...\n");
+        return 1;
+    }
+    return 0;
+}
