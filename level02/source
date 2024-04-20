@@ -1,0 +1,92 @@
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <strings.h>
+
+#define FLAG_LENGTH 41
+// 0x7fffffffe540
+int main(unsigned long a0, unsigned long a1)
+{
+    unsigned long v0;  // [bp-0x128]
+    unsigned int v1;  // [bp-0x11c]
+    char *password;  // [bp-0x118], Other Possible Types: unsigned long
+    char *dest_buffer;  // [bp-0xa8], Other Possible Types: unsigned long
+    char *username;  // [bp-0x78], Other Possible Types: unsigned long
+    unsigned int bytes_read;  // [bp-0x14]
+    FILE *file;  // [bp-0x10]
+    unsigned long v8;  // rcx
+    unsigned long v9;  // rdi
+    unsigned long v10;  // d
+    unsigned long v11;  // rdi
+    unsigned long v12;  // rcx
+    unsigned long v13;  // rcx
+    unsigned long v14;  // rdi
+
+    v1 = a0;
+    v0 = a1;
+    v8 = 12;
+    for (v9 = &username; v8; v9 += v10 * 8)
+    {
+        v8 -= 1;
+        username = 0;
+    }
+    *((int *)v9) = 0;
+    v12 = 5;
+    for (v11 = &dest_buffer; v12; v11 += v10 * 8)
+    {
+        v12 -= 1;
+        dest_buffer = 0;
+    }
+    *((char *)v11) = 0;
+    v13 = 12;
+    for (v14 = &password; v13; v14 += v10 * 8)
+    {
+        v13 -= 1;
+        password = 0;
+    }
+    *((int *)v14) = 0;
+
+    file = 0;
+    file = fopen("/home/users/level03/.pass", "r");
+    if (!file)
+    {
+        fwrite("ERROR: failed to open password file\n", 1, 36, stderr);
+        exit(1); /* do not return */
+    }
+
+    bytes_read = 0;
+    bytes_read = fread(&dest_buffer, 1, FLAG_LENGTH, file);
+    (&dest_buffer)[strcspn(&dest_buffer, "\n")] = 0;
+    if (bytes_read != FLAG_LENGTH)
+    {
+        fwrite("ERROR: failed to read password file\n", 1, 36, stderr);
+        fwrite("ERROR: failed to read password file\n", 1, 36, stderr);
+        exit(1); /* do not return */
+    }
+    fclose(file);
+
+    puts("===== [ Secure Access System v1.0 ] =====");
+    puts("/***************************************\\");
+    puts("| You must login to access this system. |");
+    puts("\\**************************************/");
+
+    printf("--[ Username: ");
+    fgets(&username, 100, stdin);
+    (&username)[strcspn(&username, "\n")] = 0;
+
+    printf("--[ Password: ");
+    fgets(&password, 100, stdin);
+    (&password)[strcspn(&password, "\n")] = 0;
+
+    puts("*****************************************");
+    if (!strncmp(&dest_buffer, &password, FLAG_LENGTH))
+    {
+        printf("Greetings, %s!\n", (unsigned int)&username);
+        system("/bin/sh");
+        return 0;
+    }
+    
+    printf(&username);
+    puts(" does not have access!");
+    exit(1); /* do not return */
+}
