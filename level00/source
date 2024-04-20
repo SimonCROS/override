@@ -1,0 +1,24 @@
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+int main()
+{
+    int result;
+
+    puts("***********************************");
+    puts("* \t     -Level00 -\t\t  *");
+    puts("***********************************");
+    printf("Password:");
+    scanf("%d", &result);
+    if (result == 0x149c)
+    {
+        puts("\nAuthenticated!");
+        system("/bin/sh");
+    }
+    else
+    {
+        puts("\nAuthenticated!");
+    }
+    return 0;
+}
