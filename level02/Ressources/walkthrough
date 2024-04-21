@@ -1,5 +1,14 @@
 <!-- vim: syntax=Markdown -->
 
+| RELRO | STACK CANARY | NX | PIE | RPATH | RUNPATH | FILE |
+| :---- | :----------- | :- | :-- | :---- | :------ | :--- |
+| <span style="color:red">No RELRO</span> | <span style="color:red">No canary found</span> | <span style="color:red">NX disabled</span> | <span style="color:red">No PIE</span> | <span style="color:green">No RPATH</span> | <span style="color:green">No RUNPATH</span> | <span style="background-color:red">/home/users/level02/level02</span> |
+
+|    |    |
+| :- | :- |
+| **Architecture** | x64 |
+| **Exploit type** | format string attack |
+
 On commence à lancer le fichier executable `./level02`, qui nous demande un username/mdp.
 
 À la fin, on obtient um message :
@@ -19,8 +28,6 @@ Dans l'assembleur, on remarque des fonctions qu'on a pu préalablement casser da
 - fread
 - fgets
 - printf
-
-**Petite précision, on passe à du x64 !**
 
 Mais on remarque vite qu'avec `fopen` et `fread`, on ira pas loin. Elles ne contiennent aucunes actions de l'utilisateur avant.\
 En revanche, `fread` stocke le flag dans un pointeur sur la stack.
