@@ -6,7 +6,8 @@
         "flag": "plaintext",
         "stdio.h": "c",
         "stdlib.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "strings.h": "c"
     },
     "[asm-collection]": {
         "editor.detectIndentation": false,

@@ -1,5 +1,13 @@
 <!-- vim: syntax=Markdown -->
 
+On constate dans la décompilation du code un programme assez simple à comprendre.
+
+Un nombre est récupéré via `scanf`, puis on le soustraît à `322424845`.\
+En suite, si il est compris entre 1 et 21, on le passe à une fonction, et on `xor` chaque caractère de "Q\}|u\`sfg\~sf\{\}|a3" avec.
+
+Si le résultat est "Congratulations!", le programme `/bin/sh` est lancé.
+
+Voici un petit programme que nous avons réalisé en js pour essayer les 21 combinaisons.
 ```js
 var v4 = "Q}|u`sfg~sf{}|a3";
 for (var j = 1; j <= 21; j++)
@@ -12,3 +20,9 @@ for (var j = 1; j <= 21; j++)
     console.log(j, String.fromCharCode(...tab), 322424845 - j);
 }
 ```
+
+Le résultat est concluant à j = 18 !
+
+On peut en suite soustraire `j` à `322424845`, et cela nous donne `322424827`.
+
+Il suffit de passer ce nombre au programme, et voilà.
