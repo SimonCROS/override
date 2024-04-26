@@ -1,3 +1,4 @@
+_main:
    0x08048494 <+0>:	push   ebp
    0x08048495 <+1>:	mov    ebp,esp
    0x08048497 <+3>:	and    esp,0xfffffff0

@@ -7,7 +7,14 @@
         "stdio.h": "c",
         "stdlib.h": "c",
         "unistd.h": "c",
-        "strings.h": "c"
+        "strings.h": "c",
+        "prctl.h": "c",
+        "ptrace.h": "c",
+        "ptrace-shared.h": "c",
+        "signal.h": "c",
+        "types.h": "c",
+        "sigset_t.h": "c",
+        "sigval_t.h": "c"
     },
     "[asm-collection]": {
         "editor.detectIndentation": false,

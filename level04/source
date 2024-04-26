@@ -1,0 +1,58 @@
+#include <signal.h>
+#include <stdio.h>
+#include <string.h>
+#include <strings.h>
+#include <sys/prctl.h>
+#include <sys/ptrace.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+int main()
+{
+    int stat_loc = 0; // [esp+0x1c] [ebp-0x9c] BYREF
+    char s[128]; // [esp+0x20] [ebp-0x98] BYREF
+    int v6; // [esp+0xa0] [ebp-0x18]
+    int v7; // [esp+0xa4] [ebp-0x14]
+    int word = 0; // [esp+0xa8] [ebp-0x10]
+    __pid_t pid; // [esp+0xac] [ebp-0xc]
+
+    bzero(s, sizeof(s));
+    pid = fork();
+    if (!pid)   // I am the child
+    {
+        prctl(PR_SET_PDEATHSIG, SIGHUP); // I suicide if my mummy dies
+        /*
+        PR_SET_PDEATHSIG
+            Set the parent-death signal of the calling process to arg2.
+            This is the signal that the calling process will get when its parent dies.
+        */
+        ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+        puts("Give me some shellcode, k");
+        gets(s);
+    }
+    else
+    {
+        do
+        {
+            wait(&stat_loc);
+            if (WIFEXITED(stat_loc) || WIFSIGNALED(stat_loc))
+            {
+                puts("child is exiting...");
+                return 0;
+            }
+            // long ptrace(PTRACE_PEEKUSER, pid, void *addr, void *data);
+            word = ptrace(PTRACE_PEEKUSER, pid, 44, NULL);
+            printf("%d\n", word);
+            /*
+            PTRACE_PEEKUSER
+                Read a word at offset addr in the tracee's USER area, which holds the registers and other information
+                about the process (see <sys/user.h>). The word is returned as the result of the ptrace() call.
+                Typically, the offset must be word-aligned, though this might vary by architecture.
+                See NOTES. (data is ignored; but see NOTES.)
+            */
+        } while (word != 11);
+        puts("no exec() for you");
+        kill(pid, SIGKILL);
+    }
+    return 0;
+}

@@ -55,7 +55,7 @@ Pour le `0-16`, on peut observer `esp` avant et après via `gdb`, et on voit que
 Donc `80 + 0 = 80`.
 On peut donc remplir notre buffer de 80 `nop` (ou de ce qu'on veut vu qu'on ne va pas éxécuter la stack).
 
-Voici le détail du shellcode utilisé :
+Voici le détail du buffer utilisé :
 ```shellcode
 \x90\x90\x90\x90 ┐ nop
 \x90\x90\x90\x90 │
