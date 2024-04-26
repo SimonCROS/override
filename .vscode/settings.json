@@ -14,7 +14,10 @@
         "signal.h": "c",
         "types.h": "c",
         "sigset_t.h": "c",
-        "sigval_t.h": "c"
+        "sigval_t.h": "c",
+        "cstddef": "c",
+        "stdbool.h": "c",
+        "string.h": "c"
     },
     "[asm-collection]": {
         "editor.detectIndentation": false,
