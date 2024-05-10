@@ -1,0 +1,14 @@
+<!-- vim: syntax=Markdown -->
+
+## Level 07
+
+| RELRO | STACK CANARY | NX | PIE | RPATH | RUNPATH | FILE |
+| :---- | :----------- | :- | :-- | :---- | :------ | :--- |
+| <span style="color:yellow">Partial RELRO</span> | <span style="color:green">Canary found</span> | <span style="color:red">NX disabled</span> | <span style="color:red">No PIE</span> | <span style="color:green">No RPATH</span> | <span style="color:green">No RUNPATH</span> | <span style="background-color:red">/home/users/level07/level07</span> |
+
+|    |    |
+| :- | :- |
+| **Architecture** | x86 |
+| **Exploit type** |  |
+
+
