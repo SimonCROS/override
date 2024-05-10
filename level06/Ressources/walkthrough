@@ -7,4 +7,57 @@
 |    |    |
 | :- | :- |
 | **Architecture** | x86 |
-| **Exploit type** |  |
+| **Exploit type** | N/A |
+
+On commence par lancer le programme et on voit une entrée qui demande un login, puis un serial.\
+Cela ne donne que peu d'informations, alors on lance `gdb` et on remarque que le disas montre :
+```c
+puts("Authenticated!");
+system("/bin/sh");
+```
+précédé d'une instruction `jne` (il y a donc une condition).
+
+On pense donc qu'il faudra essayer de passer cette condition plutôt que d'injecter un shellcode.
+
+Il y a deux fonctions pour lire l'input : `fgets` pour le login, `scanf` qui scan un `%u` pour le serial.\
+En suite, ces deux entrées sont envoyées à une fonction `auth`.
+
+Cette fonction calcule une sorte de hash du login, à base de _xor_ et de _modulo_.\
+Elle va également retourner si il y a 5 caractères ou moins, ou qu'un code ascii d'un caractère est 31 ou moins.
+Il y aussi un check de `ptrace` qui vérifie si on se trouve dans _gdb_ pour annuler l'opération.
+
+Et on remarque qu'il faut simplement passer un serial correspondant au hash de l'entrée passée pour que le programme lance `system`.
+
+On peut donc juste regarder la valeur du hash calculé et comparée au serial, et pour ça, il suffit juste de faire un jump au dessus de la protection.
+
+Voici la ligne de jump qui sactive en dehors du debugger
+```asm
+0x080487bd <+117>:	jne    0x80487ed <auth+165>
+```
+
+Et la comparaison du hash
+```asm
+0x08048866 <+286>:	cmp    eax,DWORD PTR [ebp-0x10]
+0x08048869 <+289>:	je     0x8048872 <auth+298>
+```
+
+On va entrer _Antoine_ en login, et un nombre qui n'a pas d'importance en serial number : _42_
+```gdb
+(gdb) br *auth+117
+(gdb) br *auth+286
+(gdb) r
+
+Breakpoint 1, 0x080487bd in auth ()
+(gdb) jump *0x80487ed
+Continuing at 0x80487ed.
+
+Breakpoint 2, 0x08048866 in auth ()
+(gdb) p $eax
+$1 = 123
+(gdb) x/ud $ebp-0x10
+0xffffd6a8:	6233804
+```
+
+Le serial number de _Antoine_ est donc `6233804`
+
+Et si on lance le programme en dehors de `gdb` avec `Antoine` et `6233804`, c'est bon !
