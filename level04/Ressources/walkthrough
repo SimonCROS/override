@@ -1,5 +1,7 @@
 <!-- vim: syntax=Markdown -->
 
+## Level 04
+
 | RELRO | STACK CANARY | NX | PIE | RPATH | RUNPATH | FILE |
 | :---- | :----------- | :- | :-- | :---- | :------ | :--- |
 | <span style="color:yellow">Partial RELRO</span> | <span style="color:red">No canary found</span> | <span style="color:red">NX disabled</span> | <span style="color:red">No PIE</span> | <span style="color:green">No RPATH</span> | <span style="color:green">No RUNPATH</span> | <span style="background-color:red">/home/users/level04/level04</span> |
