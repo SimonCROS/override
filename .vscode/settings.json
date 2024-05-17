@@ -17,7 +17,8 @@
         "sigval_t.h": "c",
         "cstddef": "c",
         "stdbool.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "fcntl.h": "c"
     },
     "[asm-collection]": {
         "editor.detectIndentation": false,

