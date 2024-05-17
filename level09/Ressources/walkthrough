@@ -1,0 +1,46 @@
+<!-- vim: syntax=Markdown -->
+
+## Level 09
+
+| RELRO | STACK CANARY | NX | PIE | RPATH | RUNPATH | FILE |
+| :---- | :----------- | :- | :-- | :---- | :------ | :--- |
+| <span style="color:yellow">Partial RELRO</span> | <span style="color:red">No canary found</span> | <span style="color:green">NX enabled</span> | <span style="color:green">PIE enabled</span> | <span style="color:green">No RPATH</span> | <span style="color:green">No RUNPATH</span> | <span style="background-color:red">/home/users/level09/level09</span> |
+
+|    |    |
+| :- | :- |
+| **Architecture** | x64 |
+| **Exploit type** | N/A |
+
+On a `handle_msg` qui a une string dans la stack (tableau) de 140 caractères qu'on passe dans `set_username`.\
+Il y a également 5 autres variables de taille 8 (comme un pointeur) suivant le tableau. Donc 40 bytes. Et un int mis à 140.
+
+Il y a également une fonction `secret_backdoor`, qu'on va evidemment essayer de lancer (elle `fgets` et lance le programme demandé).
+
+`set_username` reçoit le tableau de `handle_msg` et a lui-même un tableau de 140, mais on utilise que 128 caractères avec le fgets.\
+Une fois que `fgets` a rempli le tableau local, 40 caractères sont mis à (tableau de `handle_msg` + 140), donc cela rempli les 5 pointeurs.
+
+Il est compliqué de savoir pourquoi la valeur de l'`int` suivant les pointeurs est 140 (peut-être une optimisation du compilateur qui utilise beaucoup 140 dans ce code), mais le point important à retenir est que 140 dans 32 bits commence par un byte 0, donc cela met fin à la "chaine de caractères" formée par les pointeurs.
+
+En suite, on passe à `set_msg`.\
+`set_username` reçoit le tableau de `handle_msg` et a lui-même un tableau de 1024.\
+Une fois que `fgets` a rempli le tableau local, 140 caractères sont mis dans le tableau de `handle_msg`.\
+Au final, on remarque le 140 de l'int situé après les pointeurs a l'utilité d'être utilisé car le 140 vient de (tableau de `handle_msg` + 180).
+
+Après avoir regardé de plus près, la condition de la boucle dans `set_username` qui permet de copier les 40 caractères est mal faite, et copie 41 caractères, ce qui permet d'augmenter le nombre situé à (tableau de `handle_msg` + 180).
+
+Le nombre 140 utilisé se situe à `0x7fffffffe5c4`, et l'adresse de retour à `0x7fffffffe5d8`, cela fait une différence de 20 octets.\
+On peut aussi calculer la différence entre le début de la chaine de caractères et l'adresse de retour.\
+L'offset est de 200 caractères pour atteindre l'adresse de retour.
+
+L'adresse de `secret_backdoor` est `0x000055555555488c` ("\x8c\x48\x55\x55\x55\x55\x00\x00").
+
+On a essayé pendant un petit bout de temps d'envoyer un caractère comme "é, è, ô, ..." donc les codes ASCII étendu sont > à 200, mais on obtient toujours `195`.\
+Il est probable que cela soit en raison de l'encodage du terminal (si il est en UTF-8, le résultat peut être ça (pas essayé)).\
+Mais via un `printf`, ça marche !
+
+```bash
+level09@OverRide:~$ printf '%40s\xfa\n%200s\x8c\x48\x55\x55\x55\x55\x00\x00\n/bin/sh\n' > a
+level09@OverRide:~$ (cat a; cat) | ./level09
+```
+
+Et voilà !
